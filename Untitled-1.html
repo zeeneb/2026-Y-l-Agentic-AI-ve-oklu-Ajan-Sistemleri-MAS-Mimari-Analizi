@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026: Agentic AI ve Multi-Agent Sistemler Raporu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f2eb; /* Warm Neutral Background */
+            color: #1e293b;
+        }
+
+        .tab-active {
+            border-bottom: 3px solid #d97706; /* Amber-600 */
+            color: #92400e; /* Amber-800 */
+            font-weight: 600;
+        }
+
+        .tab-inactive {
+            border-bottom: 3px solid transparent;
+            color: #64748b;
+            font-weight: 400;
+        }
+
+        .tab-inactive:hover {
+            color: #334155;
+            border-bottom: 3px solid #cbd5e1;
+        }
+
+        /* Chart Container Logic */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            height: 350px;
+            max-height: 400px;
+        }
+
+        /* Custom Scrollbar for logs */
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .agent-node {
+            transition: all 0.3s ease;
+        }
+        .agent-active {
+            border-color: #d97706;
+            box-shadow: 0 0 15px rgba(217, 119, 6, 0.3);
+            transform: scale(1.05);
+            background-color: #fffbeb;
+        }
+        
+        .step-indicator {
+            transition: all 0.5s ease;
+        }
+        .step-active {
+            background-color: #0f172a;
+            color: white;
+            border-color: #0f172a;
+        }
+    </style>
+    <!-- Chosen Palette: Warm Neutrals (Background #f5f2eb), Slate/Navy (Text), Amber/Orange (Highlights), Muted Teal (Secondary) -->
+    <!-- Application Structure Plan:
+         1. Header: High-level summary of 2026 landscape.
+         2. Navigation: Tabs for Architectures, Autonomous Capabilities, Multi-Agent Orchestration, Challenges/Metrics.
+         3. Section 1 (Architectures): Interactive cards explaining ReAct, CoT, Tool-use with a comparison matrix.
+         4. Section 2 (Capabilities): A "Task Simulation" flow. User steps through an agent planning, coding, failing, and self-healing.
+         5. Section 3 (MAS): A visual "Swarm" simulator. User initiates a project, and the UI highlights different "Agents" (Manager, Coder, Reviewer) as they "message" each other in a log.
+         6. Section 4 (Data/Challenges): Chart.js visualization of "Hallucination Rates" over time and a toggle comparison of Standard RAG vs. Agentic Verification.
+         Why: This structure breaks complex AI concepts into observable actions (Simulation) and quantifiable progress (Charts), making the abstract concrete.
+    -->
+    <!-- Visualization & Content Choices:
+         - Metrics: Line Chart for Error Rate reduction (2023-2026) -> Shows progress visually.
+         - Process: Step-by-step interactive flow for "Self-Healing" -> User controls the speed of understanding.
+         - Architecture: Card grid with hover details -> Clean layout for dense info.
+         - System: Network node simulation for MAS -> Explains the "Black Box" of inter-agent comms using simple CSS/JS highlights.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+
+    <!-- Header Section -->
+    <header class="bg-white border-b border-gray-200 py-8 px-4 sm:px-6 lg:px-8 shadow-sm">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Agentic AI & MAS: 2026 Görünümü</h1>
+                    <p class="mt-2 text-lg text-slate-600 max-w-2xl">
+                        Otonom ajanların mimarisi, kendi kendini iyileştirme (self-healing) yetenekleri ve çoklu ajan orkestrasyonunda gelinen son noktanın interaktif analizi.
+                    </p>
+                </div>
+                <div class="mt-4 md:mt-0 flex flex-col items-end">
+                    <span class="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-sm font-semibold border border-amber-200">Rapor Tarihi: Şubat 2026</span>
+                    <span class="text-sm text-slate-400 mt-1">Deep Learning Trends Analizi</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-50 bg-[#f5f2eb]/95 backdrop-blur border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex space-x-8 overflow-x-auto pb-1 pt-4 hide-scrollbar" id="nav-container">
+                <button onclick="switchTab('architectures')" id="tab-architectures" class="tab-active pb-4 px-1 whitespace-nowrap text-base font-medium transition-colors">
+                    Temel Mimariler
+                </button>
+                <button onclick="switchTab('capabilities')" id="tab-capabilities" class="tab-inactive pb-4 px-1 whitespace-nowrap text-base font-medium transition-colors">
+                    Otonom Yetenekler & Self-Healing
+                </button>
+                <button onclick="switchTab('mas')" id="tab-mas" class="tab-inactive pb-4 px-1 whitespace-nowrap text-base font-medium transition-colors">
+                    Multi-Agent Orkestrasyonu
+                </button>
+                <button onclick="switchTab('challenges')" id="tab-challenges" class="tab-inactive pb-4 px-1 whitespace-nowrap text-base font-medium transition-colors">
+                    Halüsinasyon & Verimlilik
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+
+        <!-- VIEW 1: ARCHITECTURES -->
+        <section id="view-architectures" class="space-y-8 animate-fade-in">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h2 class="text-2xl font-bold text-slate-800 mb-4">Mimarilerin Evrimi (2023-2026)</h2>
+                <p class="text-slate-600 mb-6">
+                    2026 yılı itibarıyla, tekil LLM çağrıları yerini <strong>bilişsel döngülere (cognitive loops)</strong> bırakmıştır. 
+                    ReAct gibi temel yaklaşımlar, daha karmaşık planlama ve refleksif düşünme katmanlarıyla birleşerek hibrit mimarilere dönüşmüştür.
+                    Aşağıdaki kartlar, günümüz ajanlarının "beyin" yapısını oluşturan temel blokları göstermektedir.
+                </p>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Card 1: Advanced ReAct -->
+                    <div class="group bg-slate-50 rounded-lg p-6 border border-slate-200 hover:border-amber-400 transition-all cursor-pointer" onclick="updateArchDetail('react')">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-bold text-slate-900">Advanced ReAct Loop</h3>
+                            <span class="text-2xl">🔄</span>
+                        </div>
+                        <p class="text-sm text-slate-600 mb-4">Reason + Act döngüsünün optimize edilmiş hali. Ajan sadece düşünmekle kalmaz, eylemin sonucunu analiz edip planını dinamik olarak günceller.</p>
+                        <div class="text-amber-600 text-sm font-semibold group-hover:underline">Detayları Gör &rarr;</div>
+                    </div>
+
+                    <!-- Card 2: Chain of Thought + Reflection -->
+                    <div class="group bg-slate-50 rounded-lg p-6 border border-slate-200 hover:border-amber-400 transition-all cursor-pointer" onclick="updateArchDetail('cot')">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-bold text-slate-900">CoT & Reflection</h3>
+                            <span class="text-2xl">🧠</span>
+                        </div>
+                        <p class="text-sm text-slate-600 mb-4">Zincirleme düşünce artık tek yönlü değil. "Self-Correction" katmanları ile ajan, kendi mantığını sorgular ve hatalı adımları geri sarar.</p>
+                        <div class="text-amber-600 text-sm font-semibold group-hover:underline">Detayları Gör &rarr;</div>
+                    </div>
+
+                    <!-- Card 3: Semantic Tool Use -->
+                    <div class="group bg-slate-50 rounded-lg p-6 border border-slate-200 hover:border-amber-400 transition-all cursor-pointer" onclick="updateArchDetail('tool')">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-bold text-slate-900">Native Tool Use</h3>
+                            <span class="text-2xl">🛠️</span>
+                        </div>
+                        <p class="text-sm text-slate-600 mb-4">API ve Python yorumlayıcıları artık dış eklenti değil, modelin doğal bir uzantısıdır. Araç seçimleri anlamsal (semantic) eşleşme ile yapılır.</p>
+                        <div class="text-amber-600 text-sm font-semibold group-hover:underline">Detayları Gör &rarr;</div>
+                    </div>
+                </div>
+
+                <!-- Detail Panel -->
+                <div id="arch-detail-panel" class="mt-8 bg-slate-800 rounded-lg p-6 text-white hidden transition-all">
+                    <h4 id="arch-title" class="text-xl font-bold text-amber-400 mb-2"></h4>
+                    <p id="arch-desc" class="text-slate-300 mb-4"></p>
+                    <div class="bg-slate-900/50 p-4 rounded border border-slate-700 font-mono text-sm text-green-400">
+                        <span class="text-slate-500">// Pseudocode Representation</span><br>
+                        <div id="arch-code"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 2: CAPABILITIES (Self-Healing Simulation) -->
+        <section id="view-capabilities" class="space-y-8 hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div class="mb-6 border-b border-gray-100 pb-4">
+                    <h2 class="text-2xl font-bold text-slate-800">Otonom Hata Düzeltme (Self-Healing) Simülasyonu</h2>
+                    <p class="text-slate-600 mt-2">
+                        2026 ajanlarının en kritik yeteneği, kod yazarken veya karmaşık görevleri yerine getirirken karşılaştıkları hataları insan müdahalesi olmadan analiz edip düzeltebilmeleridir.
+                        Aşağıdaki simülasyonu başlatarak bir ajanın <strong>hatalı Python koduyla</strong> nasıl başa çıktığını izleyin.
+                    </p>
+                </div>
+
+                <!-- Simulation Control -->
+                <div class="flex justify-between items-center mb-6">
+                    <div class="space-x-2">
+                        <button onclick="healingStep(0)" class="bg-slate-200 hover:bg-slate-300 text-slate-800 px-4 py-2 rounded font-medium transition">Sıfırla</button>
+                        <button onclick="nextHealingStep()" id="btn-next-heal" class="bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded font-medium shadow-md transition transform active:scale-95">Adım İlerle &rarr;</button>
+                    </div>
+                    <div class="text-sm font-semibold text-slate-500">
+                        Adım: <span id="heal-step-counter" class="text-slate-900">0</span> / 4
+                    </div>
+                </div>
+
+                <!-- Interactive Visualization Layout -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    
+                    <!-- Left: Agent Status Flow -->
+                    <div class="lg:col-span-4 space-y-4">
+                        <div id="step-1" class="step-indicator p-4 rounded border border-slate-200 bg-white">
+                            <div class="font-bold mb-1">1. Planlama & Kodlama</div>
+                            <div class="text-xs opacity-70">Kullanıcı isteğini anla, çözüm için Python kodu üret.</div>
+                        </div>
+                        <div id="step-2" class="step-indicator p-4 rounded border border-slate-200 bg-white opacity-50">
+                            <div class="font-bold mb-1">2. Çalıştırma & Hata</div>
+                            <div class="text-xs opacity-70">Sandbox ortamında kodu çalıştır. Hata (Exception) yakala.</div>
+                        </div>
+                        <div id="step-3" class="step-indicator p-4 rounded border border-slate-200 bg-white opacity-50">
+                            <div class="font-bold mb-1">3. Analiz & Düzeltme</div>
+                            <div class="text-xs opacity-70">Stack trace'i oku, hatayı anla, kodu revize et.</div>
+                        </div>
+                        <div id="step-4" class="step-indicator p-4 rounded border border-slate-200 bg-white opacity-50">
+                            <div class="font-bold mb-1">4. Doğrulama & Başarı</div>
+                            <div class="text-xs opacity-70">Revize kodu tekrar çalıştır. Sonucu kullanıcıya sun.</div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Terminal/Code View -->
+                    <div class="lg:col-span-8 bg-[#1e1e1e] rounded-lg p-4 font-mono text-sm text-slate-300 overflow-hidden flex flex-col h-[400px]">
+                        <div class="flex items-center gap-2 mb-4 border-b border-gray-700 pb-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            <span class="ml-2 text-xs text-gray-500">Agent Sandbox Environment (Python 3.12)</span>
+                        </div>
+                        <div id="terminal-content" class="flex-grow overflow-y-auto custom-scroll space-y-2 p-2">
+                            <div class="text-green-500">> Bekleniyor: Veri analizi görevi başlatılıyor...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 3: MULTI-AGENT SYSTEMS (Orchestration) -->
+        <section id="view-mas" class="space-y-8 hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Info Panel -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h2 class="text-xl font-bold text-slate-800 mb-4">Hiyerarşik İş Bölümü</h2>
+                        <p class="text-sm text-slate-600 mb-4">
+                            CrewAI ve Microsoft AutoGen gibi yapılardan evrilen 2026 sistemleri, dinamik rol ataması kullanır.
+                            Bu demoda, <strong>"Pazar Araştırması Raporu"</strong> oluşturmak için birbiriyle konuşan 3 ajanı izleyeceksiniz.
+                        </p>
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-xs">M</div>
+                                <div>
+                                    <div class="font-bold text-sm">Manager (Orchestrator)</div>
+                                    <div class="text-xs text-slate-500">Görevi böler, kalite kontrol yapar.</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded bg-purple-100 flex items-center justify-center text-purple-700 font-bold text-xs">R</div>
+                                <div>
+                                    <div class="font-bold text-sm">Researcher</div>
+                                    <div class="text-xs text-slate-500">Web araması ve veri toplama.</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs">W</div>
+                                <div>
+                                    <div class="font-bold text-sm">Writer</div>
+                                    <div class="text-xs text-slate-500">Veriyi rapora dönüştürür.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="startMASSimulation()" id="mas-start-btn" class="mt-6 w-full bg-slate-900 text-white py-3 rounded hover:bg-slate-800 transition shadow-lg">
+                            Simülasyonu Başlat
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Simulation Visualizer -->
+                <div class="lg:col-span-2 bg-slate-50 rounded-xl border border-gray-200 p-6 relative overflow-hidden flex flex-col">
+                    
+                    <!-- Network Diagram (CSS Based) -->
+                    <div class="flex justify-center items-center h-40 mb-6 relative">
+                        <!-- Connecting Lines (Absolute) -->
+                        <div class="absolute top-1/2 left-1/4 right-1/4 h-1 bg-slate-200 -z-0"></div>
+                        
+                        <!-- Agents -->
+                        <div id="agent-r" class="agent-node w-16 h-16 rounded-full bg-purple-100 border-4 border-white shadow-sm flex items-center justify-center text-purple-700 font-bold absolute left-[15%] z-10">R</div>
+                        <div id="agent-m" class="agent-node w-20 h-20 rounded-full bg-blue-100 border-4 border-white shadow-md flex items-center justify-center text-blue-700 font-bold z-20">Manager</div>
+                        <div id="agent-w" class="agent-node w-16 h-16 rounded-full bg-emerald-100 border-4 border-white shadow-sm flex items-center justify-center text-emerald-700 font-bold absolute right-[15%] z-10">W</div>
+                    </div>
+
+                    <!-- Chat Log -->
+                    <div class="flex-grow bg-white border border-gray-200 rounded-lg p-4 overflow-y-auto custom-scroll h-64 shadow-inner" id="mas-log">
+                        <div class="text-center text-xs text-slate-400 italic mt-20">Simülasyon başlatılmayı bekliyor...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 4: CHALLENGES (Charts) -->
+        <section id="view-challenges" class="space-y-8 hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <!-- Chart 1: Hallucination Reduction -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col">
+                    <h2 class="text-lg font-bold text-slate-800 mb-2">Halüsinasyon Oranları (2023 - 2026)</h2>
+                    <p class="text-sm text-slate-500 mb-6">
+                        Agentic Verification ve RAG 2.0 teknikleri sayesinde, karmaşık görevlerdeki olgusal hata oranlarında ciddi düşüş sağlandı.
+                    </p>
+                    <div class="flex-grow flex items-center justify-center">
+                        <div class="chart-container">
+                            <canvas id="hallucinationChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="mt-4 text-xs text-center text-slate-400">Veri Kaynağı: Global AI Benchmark Report 2026</div>
+                </div>
+
+                <!-- Interactive Comparison: Methods -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <h2 class="text-lg font-bold text-slate-800 mb-4">Başarı Faktörü: "Grounding"</h2>
+                    <p class="text-slate-600 text-sm mb-6">
+                        Halüsinasyonu önlemede en etkili yöntem, ajanın ürettiği her bilgiyi dış kaynaklarla çapraz doğrulamasıdır.
+                    </p>
+
+                    <div class="space-y-4">
+                        <div class="border rounded-lg p-4 cursor-pointer hover:bg-slate-50 transition" onclick="toggleMethod('naive')">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-slate-700">2023: Naive RAG</span>
+                                <span class="text-red-500 font-bold text-sm">Hata Riski Yüksek</span>
+                            </div>
+                            <div id="desc-naive" class="text-sm text-slate-500 mt-2 hidden">
+                                Model, veritabanından bulduğu ilk belgeyi doğru kabul edip yanıt üretir. Çelişkili bilgi varsa doğrulama yapmaz.
+                            </div>
+                        </div>
+
+                        <div class="border-2 border-amber-100 bg-amber-50/50 rounded-lg p-4 cursor-pointer" onclick="toggleMethod('agentic')">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-amber-900">2026: Agentic Verification</span>
+                                <span class="text-green-600 font-bold text-sm">Güvenilir</span>
+                            </div>
+                            <div id="desc-agentic" class="text-sm text-slate-700 mt-2">
+                                1. Taslak yanıt üret.<br>
+                                2. "Critic Agent" yanıtı kaynakla karşılaştırır.<br>
+                                3. Alıntı hatası varsa yeniden yazar.<br>
+                                4. Sadece doğrulanmış cümleler son çıktıya girer.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-auto py-6">
+        <div class="max-w-7xl mx-auto px-4 text-center text-slate-400 text-sm">
+            <p>&copy; 2026 AI Research Institute. Bu rapor eğitim amaçlı simüle edilmiştir.</p>
+        </div>
+    </footer>
+
+    <script>
+        // --- State Management ---
+        const state = {
+            currentTab: 'architectures',
+            healingStep: 0,
+            masSimulating: false
+        };
+
+        // --- Data & Content ---
+        const archData = {
+            react: {
+                title: "Advanced ReAct (Reason + Act)",
+                desc: "2023'teki basit döngüden farklı olarak, 2026 ReAct modelleri 'bellek tamponu' (memory buffer) kullanır. Ajan, geçmiş başarısız eylemlerini hatırlar ve aynı hatayı tekrarlamaz. Planlama aşaması artık hiyerarşiktir.",
+                code: `while not done:<br>&nbsp;&nbsp;observation = env.read()<br>&nbsp;&nbsp;memory = recall_similar_tasks(observation)<br>&nbsp;&nbsp;thought = model.reason(observation, memory)<br>&nbsp;&nbsp;action = model.plan(thought)<br>&nbsp;&nbsp;result = env.execute(action)<br>&nbsp;&nbsp;if result.error: self_correct(result)`
+            },
+            cot: {
+                title: "Chain of Thought with Reflection",
+                desc: "Ajan sadece adım adım düşünmekle kalmaz, her 3 adımda bir 'Reflection' (Yansıma) duraklaması yapar. 'Şu ana kadar yaptığım çıkarım mantıklı mı?' sorusunu sorarak yanlış yola saptığında geri döner (Backtracking).",
+                code: `steps = []<br>for step in logic_chain:<br>&nbsp;&nbsp;steps.append(step)<br>&nbsp;&nbsp;critique = critic_agent.review(steps)<br>&nbsp;&nbsp;if critique.has_flaw:<br>&nbsp;&nbsp;&nbsp;&nbsp;rollback_to_step(critique.flawed_index)<br>&nbsp;&nbsp;&nbsp;&nbsp;retry_with_new_hypothesis()`
+            },
+            tool: {
+                title: "Integrated Tool Use",
+                desc: "Eskiden modeller API çağırmak için özel formatlara (JSON) zorlanırdı. Şimdi, Python interpreter modelin doğal bir parçasıdır. Model, karmaşık hesaplamaları veya veri işlemlerini doğrudan Python kodu yazıp çalıştırarak çözer.",
+                code: `user_query = "Calculate CAGR for last 5 years"<br># Model decides to use Python automatically<br>code = generate_pandas_script(data)<br>result = python_executor.run(code)<br>response = synthesize_answer(result)`
+            }
+        };
+
+        const masScript = [
+            { agent: 'm', text: "Ekip, kullanıcı 'Elektrikli Araç Batarya Trendleri 2026' hakkında rapor istedi. Researcher, lütfen son makaleleri tara.", delay: 1000 },
+            { agent: 'r', text: "Anlaşıldı. Web Search API ve Akademik Veritabanlarında tarama yapıyorum... [Searching...]", delay: 2500 },
+            { agent: 'r', text: "Veri toplandı: Solid-state bataryalar %40 pazar payına ulaştı. Maliyetler kWh başına 60$ altına indi. Veriyi Writer'a iletiyorum.", delay: 4500 },
+            { agent: 'm', text: "Writer, bu verileri kullanarak yönetici özeti formatında, özellikle maliyet düşüşüne odaklanan bir taslak hazırla.", delay: 6000 },
+            { agent: 'w', text: "Taslak hazırlanıyor... [Drafting]... Başlık: '2026 Enerji Depolama Devrimi'. Metin oluşturuldu.", delay: 8000 },
+            { agent: 'm', text: "Kontrol ediyorum... Uygun. Görev tamamlandı.", delay: 9500 }
+        ];
+
+        // --- View Switching Logic ---
+        function switchTab(tabId) {
+            // Update UI State
+            ['architectures', 'capabilities', 'mas', 'challenges'].forEach(id => {
+                const btn = document.getElementById(`tab-${id}`);
+                const view = document.getElementById(`view-${id}`);
+                
+                if (id === tabId) {
+                    btn.classList.remove('tab-inactive');
+                    btn.classList.add('tab-active');
+                    view.classList.remove('hidden');
+                } else {
+                    btn.classList.add('tab-inactive');
+                    btn.classList.remove('tab-active');
+                    view.classList.add('hidden');
+                }
+            });
+            state.currentTab = tabId;
+
+            // Trigger Charts if Challenges tab is opened
+            if (tabId === 'challenges' && !window.chartInitialized) {
+                initCharts();
+                window.chartInitialized = true;
+            }
+        }
+
+        // --- Section 1: Architectures Interaction ---
+        function updateArchDetail(key) {
+            const panel = document.getElementById('arch-detail-panel');
+            const title = document.getElementById('arch-title');
+            const desc = document.getElementById('arch-desc');
+            const code = document.getElementById('arch-code');
+
+            panel.classList.remove('hidden');
+            panel.classList.add('animate-pulse-once'); // simple highlight effect
+            setTimeout(() => panel.classList.remove('animate-pulse-once'), 500);
+
+            title.innerText = archData[key].title;
+            desc.innerHTML = archData[key].desc;
+            code.innerHTML = archData[key].code;
+        }
+
+        // --- Section 2: Self-Healing Simulation ---
+        function healingStep(stepOverride = null) {
+            const terminal = document.getElementById('terminal-content');
+            const steps = [1, 2, 3, 4];
+            
+            if (stepOverride !== null) state.healingStep = stepOverride;
+            
+            // Visual Update for Steps
+            steps.forEach(s => {
+                const el = document.getElementById(`step-${s}`);
+                if (s === state.healingStep) {
+                    el.classList.remove('opacity-50');
+                    el.classList.add('step-active');
+                } else if (s < state.healingStep) {
+                    el.classList.remove('opacity-50', 'step-active');
+                    el.classList.add('opacity-30'); // Done
+                } else {
+                    el.classList.remove('step-active');
+                    el.classList.add('opacity-50');
+                }
+            });
+
+            document.getElementById('heal-step-counter').innerText = state.healingStep;
+
+            // Terminal Logic
+            if (state.healingStep === 0) {
+                terminal.innerHTML = `<div class="text-green-500">> Sistem Hazır. Simülasyonu başlatın.</div>`;
+            } else if (state.healingStep === 1) {
+                terminal.innerHTML += `
+                    <div class="mt-2 text-slate-300">$ user_prompt: "sales.csv dosyasını oku ve aylık ortalamayı çiz."</div>
+                    <div class="text-blue-400">> Agent: Düşünüyorum... Pandas kullanmalıyım.</div>
+                    <div class="text-yellow-300">> Code Generated:</div>
+                    <div class="text-slate-500 pl-4">import pandas as pd<br>df = pd.read_csv('sales.csv')<br>df.plot(kind='bar') # Olası hata: tarih formatı</div>
+                `;
+            } else if (state.healingStep === 2) {
+                terminal.innerHTML += `
+                    <div class="mt-2 text-green-500">> Executing Code...</div>
+                    <div class="text-red-500 font-bold">Error: ValueError: could not convert string to float: 'Jan-2026'</div>
+                    <div class="text-red-400 text-xs">at df.plot(kind='bar')...</div>
+                `;
+            } else if (state.healingStep === 3) {
+                terminal.innerHTML += `
+                    <div class="mt-2 text-purple-400">> Self-Healing Triggered 🚑</div>
+                    <div class="text-slate-300">> Analiz: Sütun veri tipi string, grafik için float gerekli.</div>
+                    <div class="text-blue-400">> Düzeltme Stratejisi: Tarih sütununu parse et veya numerik sütunu seç.</div>
+                    <div class="text-yellow-300">> Revised Code:</div>
+                    <div class="text-slate-500 pl-4"># Parsing dates explicitly<br>df['Date'] = pd.to_datetime(df['Date'])<br>df.set_index('Date', inplace=True)<br>df['Amount'].plot()</div>
+                `;
+            } else if (state.healingStep === 4) {
+                terminal.innerHTML += `
+                    <div class="mt-2 text-green-500">> Re-Executing...</div>
+                    <div class="text-green-400 font-bold">> Success! Chart object created.</div>
+                    <div class="text-white">> Çıktı kullanıcıya sunuldu. ✅</div>
+                `;
+            }
+
+            // Auto scroll terminal
+            terminal.scrollTop = terminal.scrollHeight;
+            
+            // Button Logic
+            const btn = document.getElementById('btn-next-heal');
+            if (state.healingStep === 4) {
+                btn.innerText = "Tamamlandı";
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                btn.innerText = "Adım İlerle →";
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function nextHealingStep() {
+            if (state.healingStep < 4) {
+                state.healingStep++;
+                healingStep();
+            }
+        }
+
+        // --- Section 3: MAS Simulation ---
+        function startMASSimulation() {
+            if (state.masSimulating) return;
+            state.masSimulating = true;
+            
+            const btn = document.getElementById('mas-start-btn');
+            const log = document.getElementById('mas-log');
+            
+            btn.disabled = true;
+            btn.classList.add('opacity-50');
+            btn.innerText = "Simülasyon Çalışıyor...";
+            
+            log.innerHTML = ''; // Clear log
+
+            let totalDelay = 0;
+
+            masScript.forEach((step, index) => {
+                setTimeout(() => {
+                    // Reset Nodes
+                    document.querySelectorAll('.agent-node').forEach(n => n.classList.remove('agent-active'));
+                    
+                    // Highlight Active Node
+                    const activeNode = document.getElementById(`agent-${step.agent}`);
+                    if (activeNode) activeNode.classList.add('agent-active');
+
+                    // Add Log Entry
+                    const entry = document.createElement('div');
+                    entry.className = "mb-3 p-2 rounded bg-slate-50 border-l-4 border-slate-300 animate-slide-in text-sm";
+                    let role = step.agent === 'm' ? 'Manager' : (step.agent === 'r' ? 'Researcher' : 'Writer');
+                    let color = step.agent === 'm' ? 'text-blue-700' : (step.agent === 'r' ? 'text-purple-700' : 'text-emerald-700');
+                    
+                    entry.innerHTML = `<span class="font-bold ${color}">${role}:</span> <span class="text-slate-700">${step.text}</span>`;
+                    log.appendChild(entry);
+                    log.scrollTop = log.scrollHeight;
+
+                    // Finish check
+                    if (index === masScript.length - 1) {
+                        state.masSimulating = false;
+                        btn.disabled = false;
+                        btn.classList.remove('opacity-50');
+                        btn.innerText = "Simülasyonu Tekrar Başlat";
+                        document.querySelectorAll('.agent-node').forEach(n => n.classList.remove('agent-active'));
+                    }
+
+                }, totalDelay += step.delay);
+            });
+        }
+
+        // --- Section 4: Charts ---
+        function initCharts() {
+            const ctx = document.getElementById('hallucinationChart').getContext('2d');
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['2023', '2024', '2025', '2026'],
+                    datasets: [
+                        {
+                            label: 'Olgusal Hata Oranı (Hallucination Rate)',
+                            data: [18.5, 12.0, 5.2, 1.8], // Simulated diminishing returns
+                            borderColor: '#d97706', // Amber 600
+                            backgroundColor: 'rgba(217, 119, 6, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.3,
+                            fill: true,
+                            pointBackgroundColor: '#fff',
+                            pointBorderColor: '#d97706',
+                            pointRadius: 5
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            align: 'end'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.y + '% Hata Oranı';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 20,
+                            grid: {
+                                color: '#f1f5f9'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Hata % (Benchmark Testleri)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function toggleMethod(method) {
+            const descNaive = document.getElementById('desc-naive');
+            const descAgentic = document.getElementById('desc-agentic');
+
+            if (method === 'naive') {
+                descNaive.classList.remove('hidden');
+                descAgentic.classList.add('hidden');
+            } else {
+                descNaive.classList.add('hidden');
+                descAgentic.classList.remove('hidden');
+            }
+        }
+
+        // Initialize first view logic (optional setup)
+        updateArchDetail('react');
+        healingStep(0);
+
+    </script>
+</body>
+</html>
